@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     API_HASH: str
 
     PLAY_GAMES: bool = True
-    POINTS: list[int] = [190, 230]
+    POINTS: list[int] = [230, 350]
     USE_CUSTOM_PAYLOAD_SERVER: bool = True
     CUSTOM_PAYLOAD_SERVER_URL: str = "http://localhost:9876"
 
@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     USE_REF: bool = False
     REF_ID: str = ''
 
-    TRIBE_CHAT_TAG: str = 'hidden_coding'
+    TRIBE_CHAT_TAG: str = 'cryptookerala'
 
     USE_PROXY_FROM_FILE: bool = False
 
