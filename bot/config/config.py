@@ -1,8 +1,10 @@
+from pydantic import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+ENV_FILE_PATH = ".env"
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True)
+    model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, env_ignore_empty=True)
 
     API_ID: int
     API_HASH: str
@@ -25,7 +27,13 @@ class Settings(BaseSettings):
     USE_PROXY_FROM_FILE: bool = False
 
     DEBUG: bool = False
+    SLEEP_SEC_BEFORE_ITERATIONS: int = 60 * 60 * 2
 
-settings = Settings()
-
+try:
+    settings = Settings()
+except ValidationError as error:
+    print("ERRORS from .env file!")
+    for e in error.errors():
+        print(f"[{e['type']} error] Field: \"{' '.join(e['loc'])}\". Message: {e['msg']}")
+    exit(1)
 

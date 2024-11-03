@@ -17,12 +17,6 @@ start_text = """
 ██╔══██╗██║     ██║   ██║██║╚██╔╝██║   ██║   ██║   ██║██╔══██╗██║   ██║   ██║   
 ██████╔╝███████╗╚██████╔╝██║ ╚═╝ ██║   ██║   ╚██████╔╝██████╔╝╚██████╔╝   ██║   
 ╚═════╝ ╚══════╝ ╚═════╝ ╚═╝     ╚═╝   ╚═╝    ╚═════╝ ╚═════╝  ╚═════╝    ╚═╝   
-                                                                                
-Select an action:
-
-    1. Run clicker
-    2. Create session
-    
 """
 
 
@@ -77,8 +71,7 @@ async def run_tasks():
         loop.create_task(
             run_tapper(
                 tg_client=tg_client,
-                proxy=next(proxies_cycle) if proxies_cycle else None,
-                loop=loop
+                proxy=next(proxies_cycle) if proxies_cycle else None
             )
         )
         for tg_client in tg_clients
