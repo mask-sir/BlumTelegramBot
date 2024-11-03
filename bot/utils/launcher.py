@@ -9,6 +9,8 @@ from better_proxy import Proxy
 
 from bot.config import settings
 from bot.core.tapper import run_tapper
+from bot.utils.logger import logger
+from bot.utils.payload import check_payload_server
 
 start_text = """
 ██████╗ ██╗     ██╗   ██╗███╗   ███╗████████╗ ██████╗ ██████╗  ██████╗ ████████╗
@@ -30,12 +32,16 @@ def get_session_names() -> list[str]:
 
 
 def get_proxies() -> list[Proxy]:
+    proxies = []
     if settings.USE_PROXY_FROM_FILE:
         with open(file="bot/config/proxies.txt", encoding="utf-8-sig") as file:
-            proxies = [Proxy.from_str(proxy=row.strip()).as_url for row in file]
-    else:
-        proxies = []
-
+            for line in file:
+                if "type://" in line:
+                    continue
+                try:
+                    proxies.append(Proxy.from_str(proxy=line.strip()))
+                except ValueError as e:
+                    print(f"{e} - {line}")
     return proxies
 
 
@@ -67,6 +73,13 @@ async def run_tasks():
     proxies = get_proxies()
     proxies_cycle = cycle(proxies) if proxies else None
     loop = asyncio.get_event_loop()
+
+    if settings.USE_CUSTOM_PAYLOAD_SERVER and not await check_payload_server(settings.CUSTOM_PAYLOAD_SERVER_URL, full_test=True):
+        logger.warning(
+            f"The payload server is unavailable or not running. <y>Without it, the bot will not play games for passes.</y> \n"
+            f"<r>Read info</r>: https://github.com/HiddenCodeDevs/BlumTelegramBot/blob/main/PAYLOAD-SERVER.MD"
+        )
+
     tasks = [
         loop.create_task(
             run_tapper(
