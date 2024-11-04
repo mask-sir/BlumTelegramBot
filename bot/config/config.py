@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     API_HASH: str
 
     PLAY_GAMES: bool = True
-    POINTS: list[int] = [230, 350]
+    POINTS: list[int] = [190, 240]
     USE_CUSTOM_PAYLOAD_SERVER: bool = True
     CUSTOM_PAYLOAD_SERVER_URL: str = "http://localhost:9876"
 
