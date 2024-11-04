@@ -45,6 +45,10 @@ class Tapper:
     async def check_tribe(self):
         try:
             my_tribe = await self._api.get_my_tribe()
+            self._log.trace(f"my_tribe got: {my_tribe}")
+            if not isinstance(my_tribe, dict):
+                self._log.warning(f"Unknown my tribe data: {my_tribe}")
+                return
             if my_tribe.get("blum_bug"):
                 return self._log.warning("<r>Blum or TG Bug!</r> Account in tribe, but tribe not loading and leaving.")
             if my_tribe.get("title"):
@@ -57,7 +61,7 @@ class Tapper:
 
             chat_tribe = await self._api.search_tribe(chat_name)
 
-            if not chat_tribe.get("id"):
+            if not chat_tribe or not chat_tribe.get("id"):
                 self._log.warning(f"Tribe chat tag from config '{chat_name}' not found")
                 settings.TRIBE_CHAT_TAG = None
                 return
@@ -70,7 +74,7 @@ class Tapper:
                 if await self._api.join_tribe(chat_tribe.get('id')):
                     self._log.success(f'Joined to tribe {chat_tribe["title"]}')
         except Exception as error:
-            self._log.error(f"Join tribe {error}")
+            self._log.error(f"{traceback.format_exc()}")
 
     async def get_tasks(self):
         try:
@@ -256,12 +260,19 @@ class Tapper:
                 await self.auth(session)
             except TelegramProxyError:
                 return self._log.error(f"<r>The selected proxy cannot be applied to the Telegram client.</r>")
+            except Exception as e:
+                self._log.error(f"{traceback.format_exc()}")
+                return self._log.critical(f"Stop Tapper. Reason: {e}")
 
             timer = 0
             while True:
                 delta_time = time() - timer
-                if delta_time <= settings.SLEEP_SEC_BEFORE_ITERATIONS:
-                    sleep_time = settings.SLEEP_SEC_BEFORE_ITERATIONS - delta_time
+                sleep_time = uniform(
+                    settings.SLEEP_MINUTES_BEFORE_ITERATIONS[0],
+                    settings.SLEEP_MINUTES_BEFORE_ITERATIONS[1]
+                ) * 60
+                if delta_time <= sleep_time:
+                    sleep_time = sleep_time - delta_time
                     self._log.info(f"Sleep <y>{format_duration(sleep_time)}</y> before next checks...")
                     await asyncio.sleep(sleep_time)
                 try:

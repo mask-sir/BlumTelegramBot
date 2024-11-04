@@ -1,8 +1,9 @@
+from asyncio import sleep
 from aiohttp import ClientSession
 
 from bot.config import settings
 from bot.core.helper import get_referral_token, get_random_letters
-from bot.exceptions import NeedReLoginError, NeedRefreshTokenError
+from bot.exceptions import NeedReLoginError, NeedRefreshTokenError, InvalidUsernameError, AuthError
 from bot.utils.logger import SessionLogger
 
 class BlumApi:
@@ -59,25 +60,35 @@ class BlumApi:
 
     async def auth_with_web_data(self, web_data) -> dict:
         resp = await self.post(url=f"{self.user_url}/api/v1/auth/provider/PROVIDER_TELEGRAM_MINI_APP", data=web_data)
+        resp_json = await resp.json()
+        if resp.status == 200:
+            return resp_json
         if resp.status == 520:
             raise NeedReLoginError()
-        resp_json = await resp.json()
-        if resp.status != 200:
-            raise Exception(f"error auth_with_web_data. resp[{resp.status}]: {resp_json}")
-        return resp_json
+        if resp.status == 500 and "Invalid username" in resp_json.get('message'):
+            raise InvalidUsernameError(f"response data: {resp_json}")
+        raise Exception(f"error auth_with_web_data. resp[{resp.status}]: {resp_json}")
+
 
     async def login(self, web_data: dict):
         web_data = {"query": web_data}
         if settings.USE_REF is True and not web_data.get("username"):
-            web_data.update({"username": web_data.get("username"), "referralToken": get_referral_token().split('_')[1]})
-        while True:
-            data = await self.auth_with_web_data(web_data)
-            if data.get("message") == "Username is not available":
-                web_data.update({"username": web_data.get("username") + get_random_letters()})
-                self._log.info(f'Try register using ref - {web_data.get("referralToken")}')
+            web_data.update({
+                "username": web_data.get("username", get_random_letters()),
+                "referralToken": get_referral_token().split('_')[1]
+            })
+        for _ in range(4):
+            try:
+                data = await self.auth_with_web_data(web_data)
+            except InvalidUsernameError as e:
+                self._log.warning(f"Maybe invalid (empty) username from TG account... Error: {e}")
+                web_data.update({"username": get_random_letters()})
+                self._log.warning(f'Try using username for auth - {web_data.get("username")}')
+                await sleep(5)
                 continue
             token = data.get("token", {})
             return self.set_tokens(token)
+        raise AuthError("Auth tries ended. Result Failed!")
 
     def set_tokens(self, token_data: dict):
         self._refresh_token = token_data.get('refresh', '')
@@ -222,7 +233,7 @@ class BlumApi:
         return resp_json.get("claimBalance")
 
     @error_wrapper
-    async def search_tribe(self, chat_name):
+    async def search_tribe(self, chat_name) -> dict | None:
         if not chat_name:
             return
         resp = await self.get(f'{self.tribe_url}/api/v1/tribe?search={chat_name}')
